@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cat Parkour Adventure</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #1a1a24;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 500px;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* UI Overlays */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            z-index: 10;
+        }
+
+        h1 {
+            font-size: 42px;
+            margin-bottom: 30px;
+            text-shadow: 3px 3px 0px #1a252f;
+            color: #f39c12;
+            letter-spacing: 2px;
+        }
+
+        .btn {
+            background: #e67e22;
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            margin: 10px;
+            font-size: 20px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #d35400;
+            transition: all 0.1s ease;
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .btn:hover {
+            background: #f39c12;
+        }
+
+        .btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #d35400;
+        }
+
+        /* Options Modal */
+        #options-menu {
+            display: none;
+            background: rgba(20, 20, 30, 0.95);
+        }
+
+        .options-box {
+            background: #2c3e50;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            border: 3px solid #f39c12;
+        }
+
+        .toggle-container {
+            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            font-size: 18px;
+        }
+
+        /* Cat Paw Overlay Animation */
+        #paw-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 20;
+            display: none;
+        }
+
+        .paw-print {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background-color: #ff7675;
+            border-radius: 50%;
+            transform: scale(0) rotate(-20deg);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .paw-print::before, .paw-print::after {
+            content: '';
+            position: absolute;
+            background-color: #ff7675;
+            border-radius: 50%;
+        }
+
+        /* Mobile Controls */
+        #mobile-controls {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            width: 100%;
+            height: 120px;
+            display: none;
+            justify-content: space-between;
+            padding: 0 20px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .dpad, .action-btns {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+            pointer-events: auto;
+        }
+
+        .touch-btn {
+            width: 55px;
+            height: 55px;
+            background: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+            color: white;
+            font-weight: bold;
+            touch-action: manipulation;
+        }
+
+        .touch-btn:active {
+            background: rgba(243, 156, 18, 0.8);
+        }
+
+        /* Victory Screen */
+        #win-screen {
+            display: none;
+            background: rgba(46, 204, 113, 0.9);
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
+
+    <!-- Main Menu -->
+    <div id="main-menu" class="overlay">
+        <h1>🐾 Cat Adventure 🐾</h1>
+        <button class="btn" onclick="startGameSequence()">PLAY</button>
+        <button class="btn" onclick="openOptions()">OPTIONS</button>
+    </div>
+
+    <!-- Options Menu -->
+    <div id="options-menu" class="overlay">
+        <div class="options-box">
+            <h2>Game Options</h2>
+            <div class="toggle-container">
+                <span>Control Mode:</span>
+                <button id="control-toggle-btn" class="btn" style="min-width:120px; padding: 8px 16px; font-size: 16px;" onclick="toggleControls()">PC Mode</button>
+            </div>
+            <p style="font-size: 12px; color: #bdc3c7; margin-bottom: 20px;">
+                PC: Arrow Keys / A & D to Move, Space / W to Jump, E to Enter/Exit Door<br>
+                Mobile: On-Screen Touch Buttons
+            </p>
+            <button class="btn" onclick="closeOptions()">BACK</button>
+        </div>
+    </div>
+
+    <!-- Victory Screen -->
+    <div id="win-screen" class="overlay">
+        <h1>YUMMY! FISH CAUGHT! 🐟</h1>
+        <p style="font-size: 20px; margin-bottom: 20px;">The cat is super happy!</p>
+        <button class="btn" onclick="resetToMenu()">PLAY AGAIN</button>
+    </div>
+
+    <!-- Paw Animation Layer -->
+    <div id="paw-overlay">
+        <svg id="cat-paw-svg" viewBox="0 0 100 100" style="position:absolute; width:300px; height:300px; top:50%; left:50%; transform:translate(-50%, -50%) scale(0); transition: transform 0.4s ease-out;">
+            <path d="M 30,55 C 20,50 15,65 25,75 C 35,85 65,85 75,75 C 85,65 80,50 70,55 C 60,60 40,60 30,55 Z" fill="#f39c12"/>
+            <circle cx="25" cy="40" r="8" fill="#f39c12"/>
+            <circle cx="41" cy="30" r="9" fill="#f39c12"/>
+            <circle cx="59" cy="30" r="9" fill="#f39c12"/>
+            <circle cx="75" cy="40" r="8" fill="#f39c12"/>
+            <path d="M 35,62 C 30,58 25,68 32,73 C 38,78 62,78 68,73 C 75,68 70,58 65,62 C 58,66 42,66 35,62 Z" fill="#e67e22"/>
+            <circle cx="25" cy="40" r="5" fill="#e67e22"/>
+            <circle cx="41" cy="30" r="6" fill="#e67e22"/>
+            <circle cx="59" cy="30" r="6" fill="#e67e22"/>
+            <circle cx="75" cy="40" r="5" fill="#e67e22"/>
+        </svg>
+    </div>
+
+    <!-- Touch Controls -->
+    <div id="mobile-controls">
+        <div class="dpad">
+            <div class="touch-btn" id="btn-left">◄</div>
+            <div class="touch-btn" id="btn-right">►</div>
+        </div>
+        <div class="action-btns">
+            <div class="touch-btn" id="btn-action" style="background: rgba(241, 196, 15, 0.5);">E</div>
+            <div class="touch-btn" id="btn-jump">▲</div>
+        </div>
+    </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Game State
+let gameState = 'MENU'; // MENU, PLAYING, WIN
+let controlMode = 'PC'; // 'PC' or 'MOBILE'
+let currentRoom = 'HOUSE'; // 'HOUSE' or 'OUTSIDE'
+
+// Input Tracker
+const keys = {
+    left: false,
+    right: false,
+    up: false,
+    action: false
+};
+
+// Player Object (The Cat)
+const cat = {
+    x: 100,
+    y: 380,
+    width: 40,
+    height: 30,
+    vx: 0,
+    vy: 0,
+    speed: 4,
+    jumpForce: -11,
+    gravity: 0.5,
+    isGrounded: false,
+    facing: 'right',
+    color: '#f39c12'
+};
+
+// Camera Offset for Outside Scrolling
+let cameraY = 0;
+
+// World Elements
+const houseDoor = { x: 680, y: 320, width: 50, height: 100 };
+const outsideDoor = { x: 50, y: 380, width: 50, height: 100 };
+
+// Parkour Platforms (Outside)
+const platforms = [
+    { x: 0, y: 480, width: 800, height: 20 }, // Ground
+    { x: 150, y: 400, width: 120, height: 15 },
+    { x: 340, y: 330, width: 100, height: 15 },
+    { x: 520, y: 270, width: 120, height: 15 },
+    { x: 300, y: 200, width: 110, height: 15 },
+    { x: 120, y: 130, width: 100, height: 15 },
+    { x: 280, y: 50, width: 120, height: 15 },
+    { x: 480, y: -20, width: 100, height: 15 },
+    { x: 300, y: -90, width: 140, height: 15 },
+    { x: 120, y: -160, width: 100, height: 15 },
+    { x: 320, y: -230, width: 160, height: 20 } // Fish Platform
+];
+
+// Fish Goal (At the top of parkour)
+const fish = { x: 390, y: -270, width: 30, height: 20, caught: false };
+
+// UI Code & Functions
+function openOptions() {
+    document.getElementById('options-menu').style.display = 'flex';
+}
+
+function closeOptions() {
+    document.getElementById('options-menu').style.display = 'none';
+}
+
+function toggleControls() {
+    if (controlMode === 'PC') {
+        controlMode = 'MOBILE';
+        document.getElementById('control-toggle-btn').innerText = 'Mobile';
+    } else {
+        controlMode = 'PC';
+        document.getElementById('control-toggle-btn').innerText = 'PC Mode';
+    }
+}
+
+function updateControlVisibility() {
+    const mobileUI = document.getElementById('mobile-controls');
+    if (controlMode === 'MOBILE' && gameState === 'PLAYING') {
+        mobileUI.style.display = 'flex';
+    } else {
+        mobileUI.style.display = 'none';
+    }
+}
+
+// Paw Animation on Play
+function startGameSequence() {
+    document.getElementById('main-menu').style.display = 'none';
+    const pawOverlay = document.getElementById('paw-overlay');
+    const pawSvg = document.getElementById('cat-paw-svg');
+    
+    pawOverlay.style.display = 'block';
+    
+    // Scale up paw
+    setTimeout(() => {
+        pawSvg.style.transform = 'translate(-50%, -50%) scale(3)';
+    }, 50);
+
+    // Fade out paw and start game
+    setTimeout(() => {
+        pawSvg.style.transform = 'translate(-50%, -50%) scale(0)';
+        setTimeout(() => {
+            pawOverlay.style.display = 'none';
+            initGame();
+        }, 300);
+    }, 600);
+}
+
+function initGame() {
+    gameState = 'PLAYING';
+    currentRoom = 'HOUSE';
+    cat.x = 100;
+    cat.y = 380;
+    cat.vx = 0;
+    cat.vy = 0;
+    fish.caught = false;
+    updateControlVisibility();
+    requestAnimationFrame(gameLoop);
+}
+
+function resetToMenu() {
+    document.getElementById('win-screen').style.display = 'none';
+    document.getElementById('main-menu').style.display = 'flex';
+    gameState = 'MENU';
+    updateControlVisibility();
+}
+
+// Keyboard Handlers
+window.addEventListener('keydown', (e) => {
+    if (gameState !== 'PLAYING') return;
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') {
+        if (!keys.up && cat.isGrounded) {
+            cat.vy = cat.jumpForce;
+            cat.isGrounded = false;
+        }
+        keys.up = true;
+    }
+    if (e.key === 'e' || e.key === 'E') {
+        checkDoorInteraction();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+    if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+});
+
+// Setup Touch Button Listeners
+function bindTouch(id, keyName, isAction = false) {
+    const btn = document.getElementById(id);
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (isAction) {
+            checkDoorInteraction();
+        } else if (keyName === 'up') {
+            if (cat.isGrounded) {
+                cat.vy = cat.jumpForce;
+                cat.isGrounded = false;
+            }
+            keys.up = true;
+        } else {
+            keys[keyName] = true;
+        }
+    });
+    btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        if (!isAction && keyName !== 'up') keys[keyName] = false;
+        if (keyName === 'up') keys.up = false;
+    });
+}
+
+bindTouch('btn-left', 'left');
+bindTouch('btn-right', 'right');
+bindTouch('btn-jump', 'up');
+bindTouch('btn-action', '', true);
+
+// Door Interaction Logic
+function checkDoorInteraction() {
+    if (currentRoom === 'HOUSE') {
+        if (cat.x + cat.width > houseDoor.x && cat.x < houseDoor.x + houseDoor.width) {
+            currentRoom = 'OUTSIDE';
+            cat.x = outsideDoor.x + 10;
+            cat.y = outsideDoor.y + outsideDoor.height - cat.height;
+        }
+    } else if (currentRoom === 'OUTSIDE') {
+        if (cat.x + cat.width > outsideDoor.x && cat.x < outsideDoor.x + outsideDoor.width && cat.y > 300) {
+            currentRoom = 'HOUSE';
+            cat.x = houseDoor.x - 20;
+            cat.y = houseDoor.y + houseDoor.height - cat.height;
+        }
+    }
+}
+
+// Update Loop
+function update() {
+    if (gameState !== 'PLAYING') return;
+
+    // Horizontal Movement
+    if (keys.left) {
+        cat.vx = -cat.speed;
+        cat.facing = 'left';
+    } else if (keys.right) {
+        cat.vx = cat.speed;
+        cat.facing = 'right';
+    } else {
+        cat.vx = 0;
+    }
+
+    // Apply Gravity
+    cat.vy += cat.gravity;
+
+    // Movement & Collision Logic
+    cat.x += cat.vx;
+    cat.y += cat.vy;
+
+    // Bounds / Collision based on location
+    if (currentRoom === 'HOUSE') {
+        cameraY = 0; // Lock camera inside house
+        
+        // Walls & Floor
+        if (cat.x < 0) cat.x = 0;
+        if (cat.x + cat.width > canvas.width) cat.x = canvas.width - cat.width;
+        
+        const floorY = 420;
+        if (cat.y + cat.height >= floorY) {
+            cat.y = floorY - cat.height;
+            cat.vy = 0;
+            cat.isGrounded = true;
+        }
+    } else if (currentRoom === 'OUTSIDE') {
+        // Camera follows cat smoothly on vertical axis
+        let targetCameraY = -cat.y + 300;
+        if (targetCameraY < 0) targetCameraY = 0; // Don't scroll below ground
+        cameraY += (targetCameraY - cameraY) * 0.1;
+
+        // Side Walls
+        if (cat.x < 0) cat.x = 0;
+        if (cat.x + cat.width > canvas.width) cat.x = canvas.width - cat.width;
+
+        // Platform Collisions
+        cat.isGrounded = false;
+        platforms.forEach(p => {
+            if (cat.x + cat.width > p.x && 
+                cat.x < p.x + p.width &&
+                cat.y + cat.height >= p.y &&
+                cat.y + cat.height <= p.y + p.height + cat.vy &&
+                cat.vy >= 0) {
+                
+                cat.y = p.y - cat.height;
+                cat.vy = 0;
+                cat.isGrounded = true;
+            }
+        });
+
+        // Check Fish Collision
+        if (cat.x + cat.width > fish.x &&
+            cat.x < fish.x + fish.width &&
+            cat.y + cat.height > fish.y &&
+            cat.y < fish.y + fish.height) {
+            
+            fish.caught = true;
+            gameState = 'WIN';
+            document.getElementById('mobile-controls').style.display = 'none';
+            document.getElementById('win-screen').style.display = 'flex';
+        }
+    }
+}
+
+// Drawing Helper Functions
+function drawHouse() {
+    // Room Background (Cozy Wallpaper & Floor)
+    ctx.fillStyle = '#fce4ec';
+    ctx.fillRect(0, 0, canvas.width, 420);
+    
+    // Wooden Floor
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(0, 420, canvas.width, 80);
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(0, 420, canvas.width, 8);
+
+    // Sofa
+    ctx.fillStyle = '#e57373';
+    ctx.fillRect(150, 340, 160, 80);
+    ctx.fillStyle = '#ef5350';
+    ctx.fillRect(140, 320, 180, 30); // Backrest
+
+    // Bookshelf
+    ctx.fillStyle = '#5d4037';
+    ctx.fillRect(380, 200, 100, 220);
+    ctx.fillStyle = '#4e342e';
+    for (let i = 0; i < 4; i++) {
+        ctx.fillRect(385, 220 + i * 50, 90, 8);
+    }
+    // Colorful Books
+    const colors = ['#f44336', '#2196f3', '#4caf50', '#ffeb3b', '#9c27b0'];
+    for(let i=0; i<3; i++) {
+        for(let j=0; j<5; j++) {
+            ctx.fillStyle = colors[(i+j)%colors.length];
+            ctx.fillRect(390 + j*16, 228 + i*50, 12, 42);
+        }
+    }
+
+    // Window
+    ctx.fillStyle = '#81d4fa';
+    ctx.fillRect(520, 120, 100, 100);
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(520, 120, 100, 100);
+    ctx.beginPath();
+    ctx.moveTo(570, 120); ctx.lineTo(570, 220);
+    ctx.moveTo(520, 170); ctx.lineTo(620, 170);
+    ctx.stroke();
+
+    // Door to Outside
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(houseDoor.x, houseDoor.y, houseDoor.width, houseDoor.height);
+    ctx.fillStyle = '#ffb74d';
+    ctx.beginPath();
+    ctx.arc(houseDoor.x + 10, houseDoor.y + 50, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Interactive Prompt
+    if (cat.x + cat.width > houseDoor.x && cat.x < houseDoor.x + houseDoor.width) {
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('Press E / Action to Go Outside', houseDoor.x - 40, houseDoor.y - 15);
+    }
+}
+
+function drawOutside() {
+    ctx.save();
+    ctx.translate(0, cameraY);
+
+    // Sky Gradient Background
+    ctx.fillStyle = '#87ceeb';
+    ctx.fillRect(0, -1000, canvas.width, 2000);
+
+    // Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    ctx.beginPath();
+    ctx.arc(100, 100, 30, 0, Math.PI * 2);
+    ctx.arc(130, 90, 40, 0, Math.PI * 2);
+    ctx.arc(160, 100, 30, 0, Math.PI * 2);
+    ctx.arc(600, -100, 40, 0, Math.PI * 2);
+    ctx.arc(640, -110, 50, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Door back inside
+    ctx.fillStyle = '#795548';
+    ctx.fillRect(outsideDoor.x, outsideDoor.y, outsideDoor.width, outsideDoor.height);
+    ctx.fillStyle = '#ffb74d';
+    ctx.beginPath();
+    ctx.arc(outsideDoor.x + 40, outsideDoor.y + 50, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (cat.x + cat.width > outsideDoor.x && cat.x < outsideDoor.x + outsideDoor.width && cat.y > 300) {
+        ctx.fillStyle = '#000';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('Press E / Action to Enter House', outsideDoor.x - 20, outsideDoor.y - 15);
+    }
+
+    // Platforms
+    platforms.forEach((p, index) => {
+        if (index === 0) {
+            // Ground
+            ctx.fillStyle = '#4caf50';
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+        } else {
+            // Wooden/Stone Parkour Ledges
+            ctx.fillStyle = '#8d6e63';
+            ctx.fillRect(p.x, p.y, p.width, p.height);
+            ctx.fillStyle = '#66bb6a'; // Grass top
+            ctx.fillRect(p.x, p.y, p.width, 4);
+        }
+    });
+
+    // Draw Fish Goal
+    if (!fish.caught) {
+        ctx.fillStyle = '#ff7043';
+        // Fish Body
+        ctx.beginPath();
+        ctx.ellipse(fish.x + 15, fish.y + 10, 12, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Tail
+        ctx.beginPath();
+        ctx.moveTo(fish.x + 25, fish.y + 10);
+        ctx.lineTo(fish.x + 32, fish.y + 3);
+        ctx.lineTo(fish.x + 32, fish.y + 17);
+        ctx.closePath();
+        ctx.fill();
+        // Eye
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(fish.x + 8, fish.y + 8, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+function drawCat() {
+    ctx.save();
+    if (currentRoom === 'OUTSIDE') {
+        ctx.translate(0, cameraY);
+    }
+
+    // Cat Body
+    ctx.fillStyle = cat.color;
+    ctx.fillRect(cat.x, cat.y + 10, cat.width, cat.height - 10);
+
+    // Head
+    const headX = cat.facing === 'right' ? cat.x + cat.width - 15 : cat.x - 5;
+    ctx.fillRect(headX, cat.y, 20, 20);
+
+    // Ears
+    ctx.beginPath();
+    if (cat.facing === 'right') {
+        ctx.moveTo(headX + 2, cat.y); ctx.lineTo(headX + 7, cat.y - 8); ctx.lineTo(headX + 10, cat.y);
+        ctx.moveTo(headX + 12, cat.y); ctx.lineTo(headX + 17, cat.y - 8); ctx.lineTo(headX + 20, cat.y);
+    } else {
+        ctx.moveTo(headX, cat.y); ctx.lineTo(headX + 3, cat.y - 8); ctx.lineTo(headX + 8, cat.y);
+        ctx.moveTo(headX + 10, cat.y); ctx.lineTo(headX + 13, cat.y - 8); ctx.lineTo(headX + 18, cat.y);
+    }
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#000';
+    const eyeX = cat.facing === 'right' ? headX + 12 : headX + 4;
+    ctx.fillRect(eyeX, cat.y + 5, 3, 3);
+
+    // Tail
+    ctx.strokeStyle = cat.color;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    const tailStartX = cat.facing === 'right' ? cat.x : cat.x + cat.width;
+    ctx.moveTo(tailStartX, cat.y + 15);
+    ctx.quadraticCurveTo(tailStartX - (cat.facing === 'right' ? 10 : -10), cat.y + 5, tailStartX - (cat.facing === 'right' ? 5 : -5), cat.y - 5);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// Render Loop
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentRoom === 'HOUSE') {
+        drawHouse();
+    } else {
+        drawOutside();
+    }
+
+    drawCat();
+}
+
+// Main Game Loop
+function gameLoop() {
+    if (gameState === 'PLAYING') {
+        update();
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+}
+</script>
+</body>
+</html>
